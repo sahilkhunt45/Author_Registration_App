@@ -10,22 +10,25 @@ class CloudFirestoreHelper {
   late CollectionReference authorRef;
 
   void connectWithAuthorsCollection() {
-    authorRef = firebaseFirestore.collection("author");
+    authorRef = firebaseFirestore.collection('author');
   }
 
-  Future<void> insertRecord({
-    required String name,
-    required String bookName,
-  }) async {
+  Future<void> insertRecord(
+      {required String name,
+      required String bookName,
+      required String imageUrl,
+      required String authorImages}) async {
     connectWithAuthorsCollection();
     Map<String, dynamic> data = {
-      'name ': name,
+      'name': name,
       'bookName': bookName,
+      'images': imageUrl,
+      'authorImages': authorImages,
     };
     await authorRef.add(data);
   }
 
-  Stream<QuerySnapshot> selectRecord() {
+  Stream<QuerySnapshot<Object?>> selectRecord() {
     connectWithAuthorsCollection();
     return authorRef.snapshots();
   }
