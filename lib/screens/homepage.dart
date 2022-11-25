@@ -1,7 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../helper/cloud_firestore.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,6 +17,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  FirebaseStorage firebaseStorage = FirebaseStorage.instance;
+  ImagePicker imagePicker = ImagePicker();
+  String imageUrl = '';
+  String authorImageUrl = '';
   GlobalKey<FormState> insertFormKey = GlobalKey();
   GlobalKey<FormState> updatedFormKey = GlobalKey();
 
@@ -24,6 +33,75 @@ class _HomePageState extends State<HomePage> {
   String? bookName;
   String? updatedName;
   String? updatedBookName;
+
+  Future imgFromGallery() async {
+    String uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
+    XFile? file = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+    );
+    Reference referenceRoot = FirebaseStorage.instance.ref();
+    Reference referenceImages = referenceRoot.child('images');
+    Reference referenceImagesUpload = referenceImages.child(uniqueFileName);
+
+    try {
+      await referenceImagesUpload.putFile(File(file!.path));
+      imageUrl = await referenceImagesUpload.getDownloadURL();
+    } catch (error) {
+      print("$error");
+    }
+  }
+
+  Future authorImgFromGallery() async {
+    String uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
+    XFile? file = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+    );
+    Reference referenceRoot = FirebaseStorage.instance.ref();
+    Reference referenceImages = referenceRoot.child('Author_images');
+    Reference referenceImagesUpload = referenceImages.child(uniqueFileName);
+
+    try {
+      await referenceImagesUpload.putFile(File(file!.path));
+      authorImageUrl = await referenceImagesUpload.getDownloadURL();
+    } catch (error) {
+      print("$error");
+    }
+  }
+
+  Future imgFromCamera() async {
+    String uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
+    XFile? file = await imagePicker.pickImage(
+      source: ImageSource.camera,
+    );
+    Reference referenceRoot = FirebaseStorage.instance.ref();
+    Reference referenceImages = referenceRoot.child('images');
+    Reference referenceImagesUpload = referenceImages.child(uniqueFileName);
+
+    try {
+      await referenceImagesUpload.putFile(File(file!.path));
+      imageUrl = await referenceImagesUpload.getDownloadURL();
+    } catch (error) {
+      print("$error");
+    }
+  }
+
+  Future authorImgFromCamera() async {
+    String uniqueFileName = DateTime.now().millisecondsSinceEpoch.toString();
+    XFile? file = await imagePicker.pickImage(
+      source: ImageSource.camera,
+    );
+    Reference referenceRoot = FirebaseStorage.instance.ref();
+    Reference referenceImages = referenceRoot.child('Author_images');
+    Reference referenceImagesUpload = referenceImages.child(uniqueFileName);
+
+    try {
+      await referenceImagesUpload.putFile(File(file!.path));
+      authorImageUrl = await referenceImagesUpload.getDownloadURL();
+    } catch (error) {
+      print("$error");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,13 +116,16 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: addRecords,
+        onPressed: () {
+          addRecords();
+        },
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.add),
       ),
       body: StreamBuilder<QuerySnapshot>(
           stream: CloudFirestoreHelper.cloudFirestoreHelper.selectRecord(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          builder:
+              (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
             if (snapshot.hasError) {
               return Center(
                 child: SelectableText("${snapshot.error}"),
@@ -52,17 +133,19 @@ class _HomePageState extends State<HomePage> {
             } else if (snapshot.hasData) {
               QuerySnapshot? data = snapshot.data;
               List<QueryDocumentSnapshot> documents = data!.docs;
+
               return (documents.isNotEmpty)
                   ? ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(20),
                       itemCount: documents.length,
                       itemBuilder: (BuildContext context, i) {
                         return Card(
-                          margin: const EdgeInsets.only(
-                              right: 50, left: 50, top: 25, bottom: 25),
                           elevation: 10,
                           shadowColor: Colors.deepPurple,
+                          margin: const EdgeInsets.all(10),
                           child: Container(
-                            height: 200,
+                            height: 320,
                             alignment: Alignment.center,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
@@ -102,55 +185,58 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ],
                                 ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          right: 10, left: 10),
+                                      height: 100,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        image: DecorationImage(
+                                          image: NetworkImage(
+                                              "${documents[i]['authorImages']}"),
+                                          fit: BoxFit.fill,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      "${documents[i]['name']}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 25,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 20),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    const SizedBox(width: 50),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: const [
-                                        Icon(
-                                          Icons.person,
-                                          size: 40,
-                                          color: Colors.deepPurple,
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          right: 10, left: 10),
+                                      height: 140,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        image: DecorationImage(
+                                          image: NetworkImage(
+                                              "${documents[i]['images']}"),
+                                          fit: BoxFit.fill,
                                         ),
-                                        Icon(
-                                          Icons.menu_book_rounded,
-                                          size: 40,
-                                          color: Colors.deepPurple,
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                    const SizedBox(width: 20),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceAround,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          "${documents[i]['name']}",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 25,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 15),
-                                        Text(
-                                          "${documents[i]['bookName']}",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
+                                    Text(
+                                      '''${documents[i]['bookName']}''',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -191,7 +277,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void addRecords() {
+  void addRecords() async {
     showDialog(
       context: context,
       builder: (context) {
@@ -203,6 +289,84 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                GestureDetector(
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    radius: 40,
+                    child: Icon(
+                      Icons.person_add_alt_1_outlined,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                  ),
+                  onTap: () async {
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return SafeArea(
+                            child: Wrap(
+                              children: <Widget>[
+                                ListTile(
+                                    leading: const Icon(Icons.photo_library),
+                                    title: const Text('Gallery'),
+                                    onTap: () {
+                                      authorImgFromGallery();
+                                      Navigator.of(context).pop();
+                                    }),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_camera),
+                                  title: const Text('Camera'),
+                                  onTap: () {
+                                    authorImgFromCamera();
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                  },
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    radius: 40,
+                    child: Icon(
+                      CupertinoIcons.book_fill,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                  ),
+                  onTap: () async {
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return SafeArea(
+                            child: Wrap(
+                              children: <Widget>[
+                                ListTile(
+                                    leading: const Icon(Icons.photo_library),
+                                    title: const Text('Gallery'),
+                                    onTap: () {
+                                      imgFromGallery();
+                                      Navigator.of(context).pop();
+                                    }),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_camera),
+                                  title: const Text('Camera'),
+                                  onTap: () {
+                                    imgFromCamera();
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                  },
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   decoration: const InputDecoration(
                     hintText: "Enter Author Name",
@@ -258,35 +422,22 @@ class _HomePageState extends State<HomePage> {
                 if (insertFormKey.currentState!.validate()) {
                   insertFormKey.currentState!.save();
 
-                  await CloudFirestoreHelper.cloudFirestoreHelper
-                      .insertRecord(name: name!, bookName: bookName!)
-                      .then((value) {
-                    return ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Successfully Author's Record Added"),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Colors.deepPurple,
-                      ),
-                    );
-                  }).catchError(
-                    (error) {
-                      return ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Error: $error"),
-                        ),
-                      );
-                    },
-                  );
+                  await CloudFirestoreHelper.cloudFirestoreHelper.insertRecord(
+                      name: name!,
+                      bookName: bookName!,
+                      imageUrl: imageUrl,
+                      authorImages: authorImageUrl);
+                 
+                  nameController.clear();
+                  bookNameController.clear();
+
+                  setState(() {
+                    name = null;
+                    bookName = null;
+                  });
+
+                  Navigator.of(context).pop();
                 }
-                nameController.clear();
-                bookNameController.clear();
-
-                setState(() {
-                  name = "";
-                  bookName = "";
-                });
-
-                Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
@@ -332,6 +483,84 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                GestureDetector(
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    radius: 40,
+                    child: Icon(
+                      Icons.person_add_alt_1_outlined,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                  ),
+                  onTap: () async {
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return SafeArea(
+                            child: Wrap(
+                              children: <Widget>[
+                                ListTile(
+                                    leading: const Icon(Icons.photo_library),
+                                    title: const Text('Gallery'),
+                                    onTap: () {
+                                      authorImgFromGallery();
+                                      Navigator.of(context).pop();
+                                    }),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_camera),
+                                  title: const Text('Camera'),
+                                  onTap: () {
+                                    authorImgFromCamera();
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                  },
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    radius: 40,
+                    child: Icon(
+                      CupertinoIcons.book_fill,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                  ),
+                  onTap: () async {
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return SafeArea(
+                            child: Wrap(
+                              children: <Widget>[
+                                ListTile(
+                                    leading: const Icon(Icons.photo_library),
+                                    title: const Text('Gallery'),
+                                    onTap: () {
+                                      imgFromGallery();
+                                      Navigator.of(context).pop();
+                                    }),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_camera),
+                                  title: const Text('Camera'),
+                                  onTap: () {
+                                    imgFromCamera();
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        });
+                  },
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   decoration: const InputDecoration(
                     hintText: "Enter Author Name",
